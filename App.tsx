@@ -7,6 +7,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { RootStackParamList } from './src/navigation/types';
 import HomeScreen from './src/screens/HomeScreen';
+import OnlineMenuScreen from './src/screens/OnlineMenuScreen';
+import OnlineLobbyScreen from './src/screens/OnlineLobbyScreen';
 import Round1TargetsScreen from './src/screens/Round1TargetsScreen';
 import Round2MatchScreen from './src/screens/Round2MatchScreen';
 import Round3ScrollScreen from './src/screens/Round3ScrollScreen';
@@ -35,6 +37,8 @@ export default function App() {
           <StatusBar style="light" />
           <Stack.Navigator screenOptions={{ headerShown: false }}>
             <Stack.Screen name="Home" component={HomeScreen} />
+            <Stack.Screen name="Online" component={OnlineMenuScreen} />
+            <Stack.Screen name="OnlineLobby" component={OnlineLobbyScreen} />
             <Stack.Screen name="Round1" component={Round1TargetsScreen} />
             <Stack.Screen name="Round2" component={Round2MatchScreen} />
             <Stack.Screen name="Round3" component={Round3ScrollScreen} />

@@ -1,5 +1,6 @@
 import { COLORS, SHAPES, GameItem, ShapeType, GameColor, randomItem, shuffle } from './types';
 import { MatchDifficulty } from './difficulty';
+import { Rng } from './rng';
 
 export interface MatchChallenge {
   reference: GameItem;
@@ -11,11 +12,11 @@ function comboKey(shape: ShapeType, color: GameColor): string {
   return `${shape}-${color.name}`;
 }
 
-export function generateMatchChallenge(difficulty: MatchDifficulty): MatchChallenge {
+export function generateMatchChallenge(difficulty: MatchDifficulty, random: Rng = Math.random): MatchChallenge {
   const reference: GameItem = {
     id: 'reference',
-    shape: randomItem(SHAPES),
-    color: randomItem(COLORS),
+    shape: randomItem(SHAPES, random),
+    color: randomItem(COLORS, random),
   };
   const used = new Set([comboKey(reference.shape, reference.color)]);
   const decoys: GameItem[] = [];
@@ -26,30 +27,30 @@ export function generateMatchChallenge(difficulty: MatchDifficulty): MatchChalle
     attempts += 1;
     let shape: ShapeType;
     let color: GameColor;
-    if (Math.random() < difficulty.similarDecoyChance) {
-      if (Math.random() < 0.5) {
+    if (random() < difficulty.similarDecoyChance) {
+      if (random() < 0.5) {
         shape = reference.shape;
-        color = randomItem(COLORS.filter((c) => c.name !== reference.color.name));
+        color = randomItem(COLORS.filter((c) => c.name !== reference.color.name), random);
       } else {
         color = reference.color;
-        shape = randomItem(SHAPES.filter((s) => s !== reference.shape));
+        shape = randomItem(SHAPES.filter((s) => s !== reference.shape), random);
       }
     } else {
-      shape = randomItem(SHAPES.filter((s) => s !== reference.shape));
-      color = randomItem(COLORS.filter((c) => c.name !== reference.color.name));
+      shape = randomItem(SHAPES.filter((s) => s !== reference.shape), random);
+      color = randomItem(COLORS.filter((c) => c.name !== reference.color.name), random);
     }
     const key = comboKey(shape, color);
     if (used.has(key)) continue;
     used.add(key);
-    decoys.push({ id: `decoy-${Date.now()}-${Math.random()}`, shape, color });
+    decoys.push({ id: `decoy-${decoys.length}-${attempts}`, shape, color });
   }
 
   const correctOption: GameItem = {
-    id: `correct-${Date.now()}-${Math.random()}`,
+    id: 'correct',
     shape: reference.shape,
     color: reference.color,
   };
 
-  const options = shuffle([correctOption, ...decoys]);
+  const options = shuffle([correctOption, ...decoys], random);
   return { reference, options, correctId: correctOption.id };
 }

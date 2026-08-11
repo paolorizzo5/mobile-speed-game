@@ -6,6 +6,7 @@ import { RoundResult } from '../game/types';
 import { getMatchDifficulty } from '../game/difficulty';
 import { generateMatchChallenge, MatchChallenge } from '../game/matchChallenge';
 import { computeRoundScore, average } from '../game/scoring';
+import { createRng, seedFromString } from '../game/rng';
 import ShapeView from '../components/ShapeView';
 import RoundHud from '../components/RoundHud';
 import { theme } from '../theme';
@@ -13,11 +14,12 @@ import { theme } from '../theme';
 type Props = NativeStackScreenProps<RootStackParamList, 'Round2'>;
 
 export default function Round2MatchScreen({ navigation, route }: Props) {
-  const { level, result1 } = route.params;
+  const { level, result1, online } = route.params;
   const difficulty = useRef(getMatchDifficulty(level)).current;
+  const rng = useRef(online ? createRng(seedFromString(`${online.seed}-r2`)) : Math.random).current;
 
   const [challengeIndex, setChallengeIndex] = useState(0);
-  const [challenge, setChallenge] = useState<MatchChallenge>(() => generateMatchChallenge(difficulty));
+  const [challenge, setChallenge] = useState<MatchChallenge>(() => generateMatchChallenge(difficulty, rng));
   const [hits, setHits] = useState(0);
   const [timeLeftMs, setTimeLeftMs] = useState(difficulty.timePerChallengeMs);
   const [lockedWrongId, setLockedWrongId] = useState<string | null>(null);
@@ -51,9 +53,9 @@ export default function Round2MatchScreen({ navigation, route }: Props) {
           average(reactionTimes.current)
         ),
       };
-      navigation.replace('Round3', { level, result1, result2 });
+      navigation.replace('Round3', { level, result1, result2, online });
     },
-    [level, navigation, result1]
+    [level, navigation, online, result1]
   );
 
   const advance = useCallback(
@@ -64,7 +66,7 @@ export default function Round2MatchScreen({ navigation, route }: Props) {
         return;
       }
       setChallengeIndex(next);
-      setChallenge(generateMatchChallenge(difficulty));
+      setChallenge(generateMatchChallenge(difficulty, rng));
       setLockedWrongId(null);
       challengeStartAt.current = Date.now();
       setTimeLeftMs(difficulty.timePerChallengeMs);

@@ -5,6 +5,7 @@ import { RootStackParamList } from '../navigation/types';
 import { COLORS, SHAPES, GameColor, ShapeType, RoundResult, randomItem } from '../game/types';
 import { getScrollDifficulty } from '../game/difficulty';
 import { computeRoundScore, average } from '../game/scoring';
+import { createRng, seedFromString } from '../game/rng';
 import ShapeView from '../components/ShapeView';
 import RoundHud from '../components/RoundHud';
 import { theme } from '../theme';
@@ -24,9 +25,10 @@ interface ScrollItem {
 const ITEM_SIZE = 48;
 
 export default function Round3ScrollScreen({ navigation, route }: Props) {
-  const { level, result1, result2 } = route.params;
+  const { level, result1, result2, online } = route.params;
   const difficulty = useRef(getScrollDifficulty(level)).current;
-  const target = useRef({ shape: randomItem(SHAPES), color: randomItem(COLORS) }).current;
+  const rng = useRef(online ? createRng(seedFromString(`${online.seed}-r3`)) : Math.random).current;
+  const target = useRef({ shape: randomItem(SHAPES, rng), color: randomItem(COLORS, rng) }).current;
 
   const [items, setItems] = useState<ScrollItem[]>([]);
   const [hits, setHits] = useState(0);
@@ -75,17 +77,17 @@ export default function Round3ScrollScreen({ navigation, route }: Props) {
           average(reactionTimes.current)
         ),
       };
-      navigation.replace('Results', { level, result1, result2, result3 });
+      navigation.replace('Results', { level, result1, result2, result3, online });
       return finalHits;
     });
-  }, [level, navigation, result1, result2]);
+  }, [level, navigation, online, result1, result2]);
 
   const spawnItem = useCallback(() => {
     const { width, height } = areaSizeRef.current;
     if (width < 10 || height < 10) return;
 
-    const laneIndex = Math.floor(Math.random() * difficulty.laneCount);
-    const isMatch = Math.random() < difficulty.matchChance;
+    const laneIndex = Math.floor(rng() * difficulty.laneCount);
+    const isMatch = rng() < difficulty.matchChance;
     let shape: ShapeType;
     let color: GameColor;
     if (isMatch) {
@@ -93,8 +95,8 @@ export default function Round3ScrollScreen({ navigation, route }: Props) {
       color = target.color;
     } else {
       do {
-        shape = randomItem(SHAPES);
-        color = randomItem(COLORS);
+        shape = randomItem(SHAPES, rng);
+        color = randomItem(COLORS, rng);
       } while (shape === target.shape && color.name === target.color.name);
     }
 

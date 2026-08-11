@@ -1,22 +1,29 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, Pressable, ActivityIndicator, ScrollView, StyleSheet } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { RoundResult } from '../game/types';
 import { loadPlayer, savePlayer } from '../game/storage';
 import { computeOverallScore, computeNextLevel, LevelChange } from '../game/leveling';
+import { getUserId } from '../lib/supabase';
+import { submitMatchResult, fetchMatchPlayers, subscribeToMatchPlayers, MatchPlayerRow } from '../game/onlineMatch';
 import { theme } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Results'>;
 
+type OnlineStatus = 'submitting' | 'waitingOpponent' | 'done' | 'failed';
+
 export default function ResultsScreen({ navigation, route }: Props) {
-  const { level, result1, result2, result3 } = route.params;
+  const { level, result1, result2, result3, online } = route.params;
   const results: RoundResult[] = [result1, result2, result3];
   const overallScore = useRef(computeOverallScore(results)).current;
 
   const [newLevel, setNewLevel] = useState<number | null>(null);
   const [change, setChange] = useState<LevelChange>('same');
   const [ready, setReady] = useState(false);
+
+  const [onlineStatus, setOnlineStatus] = useState<OnlineStatus>('submitting');
+  const [opponentRow, setOpponentRow] = useState<MatchPlayerRow | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -34,22 +41,124 @@ export default function ResultsScreen({ navigation, route }: Props) {
     })();
   }, [level, overallScore]);
 
+  useEffect(() => {
+    if (!online) return undefined;
+    let active = true;
+    let unsubscribe: (() => void) | null = null;
+
+    (async () => {
+      try {
+        await submitMatchResult(online.matchId, result1.score, result2.score, result3.score, overallScore);
+        if (!active) return;
+
+        const myId = await getUserId();
+        const checkRows = (rows: MatchPlayerRow[]) => {
+          const opponent = rows.find((r) => r.player_id !== myId);
+          if (opponent?.submitted_at) {
+            setOpponentRow(opponent);
+            setOnlineStatus('done');
+            unsubscribe?.();
+            return true;
+          }
+          return false;
+        };
+
+        setOnlineStatus('waitingOpponent');
+        const rows = await fetchMatchPlayers(online.matchId);
+        if (!active) return;
+        if (!checkRows(rows)) {
+          unsubscribe = subscribeToMatchPlayers(online.matchId, (nextRows) => {
+            if (active) checkRows(nextRows);
+          });
+        }
+      } catch {
+        if (active) setOnlineStatus('failed');
+      }
+    })();
+
+    return () => {
+      active = false;
+      unsubscribe?.();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [online?.matchId]);
+
   const goHome = () => {
     navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
   };
 
   const playAgain = () => {
+    if (online) {
+      navigation.reset({ index: 0, routes: [{ name: 'Home' }, { name: 'Online' }] });
+      return;
+    }
     navigation.reset({
       index: 0,
       routes: [{ name: 'Home' }, { name: 'Round1', params: { level: newLevel ?? level } }],
     });
   };
 
+  const opponentScore = opponentRow?.overall_score ?? null;
+  const outcome =
+    opponentScore === null
+      ? null
+      : overallScore > opponentScore
+        ? 'win'
+        : overallScore < opponentScore
+          ? 'lose'
+          : 'draw';
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Partita completata</Text>
       <Text style={styles.overallScore}>{overallScore}</Text>
       <Text style={styles.overallLabel}>punteggio complessivo</Text>
+
+      {online && (
+        <View
+          style={[
+            styles.onlineCard,
+            outcome === 'win' && styles.levelBannerUp,
+            outcome === 'lose' && styles.levelBannerDown,
+          ]}
+        >
+          {onlineStatus === 'submitting' && (
+            <>
+              <ActivityIndicator color={theme.primary} />
+              <Text style={styles.onlineStatusText}>Invio del punteggio...</Text>
+            </>
+          )}
+          {onlineStatus === 'waitingOpponent' && (
+            <>
+              <ActivityIndicator color={theme.primary} />
+              <Text style={styles.onlineStatusText}>In attesa di {online.opponentName}...</Text>
+            </>
+          )}
+          {onlineStatus === 'failed' && (
+            <Text style={styles.onlineStatusText}>Non è stato possibile inviare il punteggio online.</Text>
+          )}
+          {onlineStatus === 'done' && opponentRow && (
+            <>
+              <Text style={styles.onlineOutcome}>
+                {outcome === 'win' && `Hai battuto ${online.opponentName}! 🏆`}
+                {outcome === 'lose' && `${online.opponentName} ha vinto questa sfida.`}
+                {outcome === 'draw' && 'Pareggio!'}
+              </Text>
+              <View style={styles.vsRow}>
+                <View style={styles.vsBox}>
+                  <Text style={styles.vsLabel}>Tu</Text>
+                  <Text style={styles.vsScore}>{overallScore}</Text>
+                </View>
+                <Text style={styles.vsSeparator}>vs</Text>
+                <View style={styles.vsBox}>
+                  <Text style={styles.vsLabel}>{online.opponentName}</Text>
+                  <Text style={styles.vsScore}>{opponentScore}</Text>
+                </View>
+              </View>
+            </>
+          )}
+        </View>
+      )}
 
       {ready && (
         <View
@@ -84,7 +193,7 @@ export default function ResultsScreen({ navigation, route }: Props) {
       </View>
 
       <Pressable style={[styles.button, styles.primaryButton]} onPress={playAgain}>
-        <Text style={styles.buttonText}>Rigioca</Text>
+        <Text style={styles.buttonText}>{online ? 'Nuova sfida online' : 'Rigioca'}</Text>
       </Pressable>
       <Pressable style={[styles.button, styles.secondaryButton]} onPress={goHome}>
         <Text style={styles.buttonText}>Torna alla Home</Text>
@@ -116,6 +225,52 @@ const styles = StyleSheet.create({
     color: theme.textMuted,
     fontSize: 13,
     marginBottom: 20,
+  },
+  onlineCard: {
+    width: '100%',
+    borderRadius: 20,
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+    backgroundColor: theme.card,
+    borderWidth: 1,
+    borderColor: theme.border,
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 20,
+  },
+  onlineStatusText: {
+    color: theme.textMuted,
+    fontWeight: '600',
+  },
+  onlineOutcome: {
+    color: theme.text,
+    fontSize: 17,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  vsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    marginTop: 4,
+  },
+  vsBox: {
+    alignItems: 'center',
+    minWidth: 80,
+  },
+  vsLabel: {
+    color: theme.textMuted,
+    fontSize: 12,
+  },
+  vsScore: {
+    color: theme.text,
+    fontSize: 28,
+    fontWeight: '800',
+  },
+  vsSeparator: {
+    color: theme.textMuted,
+    fontSize: 13,
+    fontWeight: '700',
   },
   levelBanner: {
     width: '100%',

@@ -5,6 +5,7 @@ import { RootStackParamList } from '../navigation/types';
 import { COLORS, SHAPES, GameItem, RoundResult, randomItem } from '../game/types';
 import { getTargetsDifficulty } from '../game/difficulty';
 import { computeRoundScore, average } from '../game/scoring';
+import { createRng, seedFromString } from '../game/rng';
 import ShapeView from '../components/ShapeView';
 import RoundHud from '../components/RoundHud';
 import { theme } from '../theme';
@@ -19,8 +20,9 @@ interface ActiveTarget extends GameItem {
 }
 
 export default function Round1TargetsScreen({ navigation, route }: Props) {
-  const { level } = route.params;
+  const { level, online } = route.params;
   const difficulty = useRef(getTargetsDifficulty(level)).current;
+  const rng = useRef(online ? createRng(seedFromString(`${online.seed}-r1`)) : Math.random).current;
 
   const [targets, setTargets] = useState<ActiveTarget[]>([]);
   const [hits, setHits] = useState(0);
@@ -56,20 +58,20 @@ export default function Round1TargetsScreen({ navigation, route }: Props) {
       avgReactionMs: average(reactionTimes.current),
       score: computeRoundScore(hits, missesCount.current, timeoutsCount.current, average(reactionTimes.current)),
     };
-    navigation.replace('Round2', { level, result1: result });
-  }, [hits, level, navigation]);
+    navigation.replace('Round2', { level, result1: result, online });
+  }, [hits, level, navigation, online]);
 
   const spawnTarget = useCallback(() => {
     const { width, height } = areaSizeRef.current;
     if (width < 10 || height < 10) return;
     const size = difficulty.targetSize;
     const id = `${Date.now()}-${Math.random()}`;
-    const x = Math.random() * Math.max(1, width - size);
-    const y = Math.random() * Math.max(1, height - size);
+    const x = rng() * Math.max(1, width - size);
+    const y = rng() * Math.max(1, height - size);
     const item: ActiveTarget = {
       id,
-      shape: randomItem(SHAPES),
-      color: randomItem(COLORS),
+      shape: randomItem(SHAPES, rng),
+      color: randomItem(COLORS, rng),
       x,
       y,
       size,

@@ -66,6 +66,13 @@ export default function HomeScreen({ navigation }: Props) {
       >
         <Text style={styles.playButtonText}>Gioca</Text>
       </Pressable>
+
+      <Pressable
+        style={({ pressed }) => [styles.onlineButton, pressed && styles.onlineButtonPressed]}
+        onPress={() => navigation.navigate('Online')}
+      >
+        <Text style={styles.onlineButtonText}>Sfida online</Text>
+      </Pressable>
     </ScrollView>
   );
 }
@@ -182,6 +189,23 @@ const styles = StyleSheet.create({
   playButtonText: {
     color: '#fff',
     fontSize: 18,
+    fontWeight: '700',
+  },
+  onlineButton: {
+    marginTop: 12,
+    backgroundColor: theme.card,
+    borderWidth: 1,
+    borderColor: theme.border,
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+  },
+  onlineButtonPressed: {
+    borderColor: theme.primary,
+  },
+  onlineButtonText: {
+    color: theme.text,
+    fontSize: 16,
     fontWeight: '700',
   },
 });
