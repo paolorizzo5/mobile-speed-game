@@ -44,6 +44,22 @@ npm run ios
 npm run web
 ```
 
+Per provare l'app (multiplayer incluso) basta **Expo Go**: nessun modulo nativo custom è in uso, quindi non serve compilare nulla. `npm run start` e scansiona il QR.
+
+## Build di un APK installabile
+
+Se invece serve un file `.apk` vero e proprio (es. da condividere senza Expo Go), si usa [EAS Build](https://docs.expo.dev/build/introduction/), il servizio cloud gratuito di Expo — va lanciato dal proprio computer (i suoi server non sono raggiungibili da ambienti sandbox con rete ristretta):
+
+```bash
+npx eas login
+npx eas build:configure
+npx eas build --platform android --profile preview
+```
+
+Il profilo `preview` (definito in [`eas.json`](./eas.json)) produce un `.apk` installabile direttamente sul telefono, invece del `.aab` richiesto dal Play Store. A fine build (di solito 5-15 minuti in coda) EAS restituisce un link per scaricare l'APK.
+
+`app.json` ha già `android.package` / `ios.bundleIdentifier` impostati a `com.reflexrush.app`.
+
 ## Struttura
 
 ```
@@ -55,4 +71,5 @@ src/
   navigation/  # tipi dello stack di navigazione
 supabase/
   schema.sql   # tabelle, RLS e funzioni RPC per il matchmaking online
+eas.json       # profili di build EAS (preview = apk installabile, production = app-bundle)
 ```

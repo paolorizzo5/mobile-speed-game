@@ -8,9 +8,12 @@
     "userInterfaceStyle": "dark",
     "backgroundColor": "#0F172A",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.reflexrush.app"
     },
     "android": {
+      "package": "com.reflexrush.app",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
