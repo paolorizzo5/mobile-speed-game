@@ -60,6 +60,16 @@ Il profilo `preview` (definito in [`eas.json`](./eas.json)) produce un `.apk` in
 
 `app.json` ha già `android.package` / `ios.bundleIdentifier` impostati a `com.reflexrush.app`.
 
+### Build da mobile, senza terminale (GitHub Actions)
+
+Il workflow [`.github/workflows/eas-build.yml`](./.github/workflows/eas-build.yml) lancia la build EAS su un runner GitHub (nessun terminale necessario, si aziona dall'app GitHub):
+
+1. Crea un account gratuito su [expo.dev](https://expo.dev) (se non ce l'hai già).
+2. Vai su **Account Settings → Access Tokens → Create Token**, copialo.
+3. Nel repo GitHub: **Settings → Secrets and variables → Actions → New repository secret** → nome `EXPO_TOKEN`, valore il token copiato.
+4. Tab **Actions** → workflow **"EAS Build (Android APK)"** → **Run workflow** (scegli il profilo `preview`) → **Run**.
+5. A build finita (10-15 minuti), apri la run: nel riquadro **Summary** in alto trovi il link per scaricare l'APK.
+
 ## Struttura
 
 ```
@@ -72,4 +82,5 @@ src/
 supabase/
   schema.sql   # tabelle, RLS e funzioni RPC per il matchmaking online
 eas.json       # profili di build EAS (preview = apk installabile, production = app-bundle)
+.github/workflows/eas-build.yml  # build APK da GitHub Actions (nessun terminale richiesto)
 ```
