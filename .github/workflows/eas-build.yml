@@ -35,7 +35,7 @@ jobs:
         run: npm ci
 
       - name: Link/create EAS project if needed
-        run: eas init --non-interactive
+        run: eas init --non-interactive --force
 
       - name: Build on EAS
         run: eas build --platform android --profile "${{ github.event.inputs.profile || 'preview' }}" --non-interactive --wait
